@@ -17,5 +17,8 @@ The full spec is `docs/LOCI_SPEC.md` (original: `docs/Loci_Proposal.pdf`). Read 
 ## Status
 
 - Current phase: Week 1 / Gate 1 (platform spike) — not yet passed.
-- Gate 1 evidence still needed: `cat /etc/nv_tegra_release`, an idle `tegrastats` line, and whether `realsense-viewer` sees the D415.
+- Board confirmed on L4T 36.4.7 (JetPack 6.2.x) as of Oct 10, 2026 — JetPack 7.2.1 not installed yet. Power mode was 7W (CPUs 5–6 off).
+- D415 confirmed working on JetPack 6: `rs-hello-realsense` reads depth, `rs-capture` streams depth/IR/color at 15 FPS.
+- Gate 1 still needs: JetPack 7.2.1 on NVMe, then re-check camera, detector engine, VLM and headless memory baseline.
+- YOLO training uses `ultralytics/ultralytics:latest-jetson-jetpack6` (matches JetPack 6). First attempt hit an out-of-memory error with the desktop + Firefox open.
 - Side work (not part of Loci): a YOLO26n parcel detector trained from a Roboflow dataset.
