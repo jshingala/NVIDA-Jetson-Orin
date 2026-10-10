@@ -20,5 +20,6 @@ The full spec is `docs/LOCI_SPEC.md` (original: `docs/Loci_Proposal.pdf`). Read 
 - Board confirmed on L4T 36.4.7 with nvidia-jetpack 6.2.1+b38 installed (CUDA 12.6.68, TensorRT 10.3.0.30) as of Oct 10, 2026 — JetPack 7.2.1 not installed yet. Power mode set to MAXN_SUPER (nvpmodel ID 2) on Oct 10, 2026; IDs: 0=15W, 1=25W, 2=MAXN_SUPER, 3=7W.
 - D415 confirmed working on JetPack 6: `rs-hello-realsense` reads depth, `rs-capture` streams depth/IR/color at 15 FPS.
 - Gate 1 still needs: JetPack 7.2.1 on NVMe, then re-check camera, detector engine, VLM and headless memory baseline.
-- YOLO training uses `ultralytics/ultralytics:latest-jetson-jetpack6` (matches JetPack 6). First attempt hit an out-of-memory error with the desktop + Firefox open.
+- YOLO training uses `ultralytics/ultralytics:latest-jetson-jetpack6` (matches JetPack 6). First attempt hit an out-of-memory error with the desktop + Firefox open. Docker went missing after the nvidia-jetpack install; reinstalled docker.io + nvidia-ctk runtime config on Oct 10, 2026 — `torch.cuda.is_available()` returns True in the container.
+- Jetson reachable over SSH at 10.0.0.19 (user jenil, hostname Jnvidia). Dataset at ~/yolo/mydata (classes: Box, Parcel; data.yaml paths fixed).
 - Side work (not part of Loci): a YOLO26n parcel detector trained from a Roboflow dataset.
