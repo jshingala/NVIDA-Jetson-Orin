@@ -49,7 +49,7 @@ def main():
     intr = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
     align = rs.align(rs.stream.color)
 
-    writer = cv2.VideoWriter(args.out, cv2.VideoWriter_fourcc(*"mp4v"), 15, (640, 480))
+    writer = cv2.VideoWriter(args.out, cv2.VideoWriter_fourcc(*"mp4v"), 30, (640, 480))
     frames, infer_ms, loop_ms = 0, [], []
     start = last_report = time.time()
 
