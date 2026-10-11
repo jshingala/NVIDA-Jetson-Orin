@@ -12,8 +12,8 @@ import time
 
 import cv2
 import numpy as np
+from ultralytics import YOLO  # load CUDA/TensorRT before librealsense
 import pyrealsense2 as rs
-from ultralytics import YOLO
 
 
 def parse_args():
@@ -38,6 +38,8 @@ def box_depth(depth_m, x1, y1, x2, y2):
 def main():
     args = parse_args()
     model = YOLO(args.model, task="detect")
+    # build the TensorRT context before the camera starts, so a model problem shows up on its own
+    model(np.zeros((480, 640, 3), dtype=np.uint8), imgsz=640, verbose=False)
 
     pipe, cfg = rs.pipeline(), rs.config()
     cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
