@@ -13,6 +13,7 @@ The full spec is `docs/LOCI_SPEC.md` (original: `docs/Loci_Proposal.pdf`). Read 
 - Memory is the constraint: 8 GB shared CPU/GPU. One resident VLM only.
 - Build from source for sm_87 on JetPack 7.2; don't trust JetPack 6 wheels or containers.
 - Verify exact versions and specs before claiming compatibility. Say so when unsure.
+- Commits are authored as the user (`git config user.name "Jenil Shingala"`, `user.email 160362895+jshingala@users.noreply.github.com`, `commit.gpgsign false`), with no Claude co-author or session lines. History was rewritten to this on Oct 12, 2026 at the user's request.
 - Lessons from the Parcel3D download mess (Oct 12, 2026) — follow these:
   - Before suggesting a "speed-up" trick, say upfront whether it will likely help and what can go wrong. If a task is bound by an outside limit (e.g. Zenodo ~0.8 MB/s => ~15 h), say so plainly instead of offering tweaks.
   - Never claim a process is running, stopped or protected without evidence (`pgrep -a`, `tmux ls`, file size growing). Ask for the output first.
