@@ -58,8 +58,10 @@ What has been done on the Jetson so far, and what comes next. Numbers are measur
                 │
                 ▼
  8. GATE 1 — platform spike on JetPack 7.2.1
-    ├─ [..] Camera: librealsense v2.59.1 from source (RSUSB + CUDA)
-    ├─ [  ] Detector: TensorRT 10.16 engine from best.onnx
+    ├─ [~ ] Camera: librealsense v2.59.1 built; D415 seen, FW 5.17.0.10,
+    │        but USB 2.1 link (USB 3 cable arriving Oct 13)
+    ├─ [x] Detector: TensorRT 10.16 FP16 engine from best.onnx
+    │        4.79 ms GPU compute, 208 inferences/s (trtexec)
     ├─ [  ] VLM: Cosmos-Reason2-2B INT4 runs on its own
     └─ [  ] Headless memory baseline (tegrastats)
                 │
