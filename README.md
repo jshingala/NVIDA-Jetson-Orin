@@ -6,12 +6,12 @@ Full design and 8-week plan: [docs/LOCI_SPEC.md](docs/LOCI_SPEC.md). Step-by-ste
 
 ## Status
 
-**Gate 1 (platform spike): passed** on Oct 13, 2026, with the camera on a USB 2.1 link for now. Next: Week 2, the fast C++ perception loop.
+**Gate 1 (platform spike): passed** on Oct 13, 2026. Next: Week 2, the fast C++ perception loop.
 
 | Gate 1 item | Status |
 |---|---|
 | JetPack 7.2.1 (CUDA 13.2, TensorRT 10.16) | ✅ Installed from the Jetson ISO onto the microSD |
-| Camera (librealsense from source) | 🟡 D415 detected, firmware 5.17.0.10, depth read from Python works; link is still USB 2.1 |
+| Camera (librealsense from source) | ✅ D415 on USB 3.2, firmware 5.17.0.10: colour + depth at 640x480 stream together at 29.8 FPS |
 | Detector engine (TensorRT) | ✅ FP16 engine built on TensorRT 10.16: 4.79 ms GPU time per 640 px frame |
 | VLM (Cosmos-Reason2-2B, 4-bit) | ✅ llama.cpp on the GPU: 37.8 tokens/s generation, 1,552 tokens/s prompt reading, 4.2 GB peak board RAM; describes live D415 photos |
 | Headless memory baseline (tegrastats) | ✅ 583 MB used at idle without the desktop (1,340 MB with it); 6.9 GB available, about 3 W |
@@ -78,7 +78,7 @@ It writes an annotated `demo.mp4` and prints FPS and latency every second. Load 
 
 - **ISO install:** in the GRUB menu, choose **"Install on microSD (for AGX Orin, Orin Nano/NX)"**. The default "Install on NVMe" fails at partitioning when no NVMe is fitted.
 - **librealsense v2.59.1:** with `-DBUILD_GRAPHICAL_EXAMPLES=false`, cmake fails because `examples/CMakeLists.txt` always links `OpenGL::GL`. Build with `-DBUILD_EXAMPLES=false`; command-line tools such as `rs-enumerate-devices` still build. `scripts/setup_udev_rules.sh` needs `v4l-utils` installed first.
-- **USB:** the dev kit's USB-C port is device-only (flashing), so the camera goes in a USB-A port. Check the link with `rs-enumerate-devices | grep -i "usb type"`; a USB 2 cable limits it to 2.1.
+- **USB:** the dev kit's USB-C port is device-only (flashing), so the camera goes in a USB-A port. Check the link with `rs-enumerate-devices | grep -i "usb type"` (want 3.2). On a USB 2 cable it reports 2.1 and colour 640x480 only works at 15 FPS; 30 FPS times out.
 
 ## Repository layout
 
