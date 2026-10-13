@@ -48,17 +48,18 @@ A warm-up model before Loci's own detector: YOLO26n fine-tuned on the Roboflow [
 
 YOLO26n trained on the Jetson itself (JetPack 7.2.1, PyTorch 2.14.1 + CUDA 13.0) on [Parcel3D](https://zenodo.org/records/8032204), a synthetic dataset of intact and damaged parcels (2 classes; 9,193 train / 2,000 val / 2,200 test images). 50 epochs at 640 px, batch 2, about 15.5 hours.
 
-**Test split** (2,200 held-out images, batch 1, PyTorch FP32):
+**Test split** (2,200 held-out images, batch 1; Ultralytics timings, which include Python pre/post-processing):
 
-| Class | Precision | Recall | mAP50 | mAP50-95 |
+| Model | mAP50 | mAP50-95 (all) | mAP50-95 normal / damaged | Pre + inference + post (ms) |
 |---|---|---|---|---|
-| All | 0.994 | 0.996 | 0.995 | 0.980 |
-| Normal box | 0.994 | 0.995 | 0.995 | 0.986 |
-| Damaged box | 0.994 | 0.996 | 0.995 | 0.973 |
+| PyTorch FP32 | 0.995 | 0.980 | 0.986 / 0.973 | 1.2 + 26.8 + 2.8 |
+| TensorRT 10.16 FP16 | 0.995 | 0.983 | 0.988 / 0.979 | 1.4 + 3.5 + 2.7 |
 
+- TensorRT FP16 runs inference **7.7x faster** (3.5 ms vs 26.8 ms) and the whole pipeline about 4x faster, with no accuracy loss.
+- FP16 scores slightly higher than PyTorch. The likely reason: the exported engine uses the standard detection head with NMS, while the PyTorch model uses YOLO26's NMS-free head. This isn't verified.
+- Pre/post-processing in Python is now more than half of the 7.6 ms total.
 - Test scores match validation (0.981), so the model isn't overfit to the validation set.
 - These are synthetic images. Accuracy on real camera images hasn't been measured yet.
-- Speed: 26.8 ms inference per image (PyTorch FP32). A TensorRT engine is next.
 
 ## Running the demo
 
