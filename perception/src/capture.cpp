@@ -90,8 +90,8 @@ int main(int argc, char** argv) try {
         }
     }
 
+    const double elapsed_s = ms_between(start, Clock::now()) / 1000.0;  // before stop(), which takes ~2 s
     pipe.stop();
-    const double elapsed_s = ms_between(start, Clock::now()) / 1000.0;
     if (total_frames > 0) {
         std::printf("\nDone: %ld frames in %.1f s (%.1f FPS), mean align %.2f ms\n",
                     total_frames, elapsed_s, total_frames / elapsed_s, total_align_ms / total_frames);
