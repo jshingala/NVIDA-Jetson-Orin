@@ -85,6 +85,7 @@ It writes an annotated `demo.mp4` and prints FPS and latency every second. Load 
 ```
 docs/LOCI_SPEC.md        Design, tech stack, 8-week plan and gates
 docs/PROGRESS.md         Progress diagram
+perception/              C++ fast loop (Week 2): D415 capture, detector, tracker, depth to 3D
 tools/parcel_demo/       Live D415 + TensorRT detection demo
 tools/parcel3d/          Parcel3D conversion, training and test commands
 ```
