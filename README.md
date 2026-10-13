@@ -13,7 +13,7 @@ Week 1, **Gate 1 (platform spike)**: in progress.
 | JetPack 7.2.1 (CUDA 13.2, TensorRT 10.16) | ✅ Installed from the Jetson ISO onto the microSD |
 | Camera (librealsense from source) | 🟡 D415 detected, firmware 5.17.0.10, depth read from Python works; link is still USB 2.1 |
 | Detector engine (TensorRT) | ✅ FP16 engine built on TensorRT 10.16: 4.79 ms GPU time per 640 px frame |
-| VLM (Cosmos-Reason2-2B, INT4) | ⬜ Next |
+| VLM (Cosmos-Reason2-2B, 4-bit) | ✅ llama.cpp on the GPU: 37.8 tokens/s generation, 1,552 tokens/s prompt reading, 4.2 GB peak board RAM; describes live D415 photos |
 | Headless memory baseline (tegrastats) | ✅ 583 MB used at idle without the desktop (1,340 MB with it); 6.9 GB available, about 3 W |
 
 ## Hardware and software
