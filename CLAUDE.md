@@ -13,7 +13,7 @@ The full spec is `docs/LOCI_SPEC.md` (original: `docs/Loci_Proposal.pdf`). Read 
 - Memory is the constraint: 8 GB shared CPU/GPU. One resident VLM only.
 - Build from source for sm_87 on JetPack 7.2; don't trust JetPack 6 wheels or containers.
 - Verify exact versions and specs before claiming compatibility. Say so when unsure.
-- Git branches: every new feature gets its own branch named `jenil/<feature-name>` (lowercase, words joined by hyphens, e.g. `jenil/vlm-baseline`), created from the default branch and merged back when the feature is done. Don't put feature work directly on the default branch. Keep large files out of git (see `.gitignore`: models, engines, datasets, runs, videos).
+- Git branches: the default branch is `main`. Every new feature gets its own branch named `js-<feature-name>` (lowercase, words joined by hyphens, e.g. `js-vlm-baseline`), created from `main` and merged back into `main` when the feature is done. Don't put feature work directly on `main`, and never use `claude/...` branch names. Keep large files out of git (see `.gitignore`: models, engines, datasets, runs, videos).
 - Commits are authored as the user (`git config user.name "Jenil Shingala"`, `user.email 160362895+jshingala@users.noreply.github.com`, `commit.gpgsign false`), with no Claude co-author or session lines. History was rewritten to this on Oct 12, 2026 at the user's request.
 - Lessons from the Parcel3D download mess (Oct 12, 2026) — follow these:
   - Before suggesting a "speed-up" trick, say upfront whether it will likely help and what can go wrong. If a task is bound by an outside limit (e.g. Zenodo ~0.8 MB/s => ~15 h), say so plainly instead of offering tweaks.
