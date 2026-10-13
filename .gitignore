@@ -1,2 +1,40 @@
+# Python
 __pycache__/
 *.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Build output (C++/CUDA, CMake)
+build/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+*.o
+*.so
+
+# Models, engines and training output (large; keep out of git)
+*.pt
+*.onnx
+*.engine
+*.npy
+*.cache
+runs/
+
+# Datasets and media
+datasets/
+data/
+*.zip
+*.mp4
+
+# Logs
+*.log
+
+# Secrets
+.env
+
+# OS and editor files
+.DS_Store
+._*
+.vscode/
+.idea/
