@@ -44,6 +44,22 @@ A warm-up model before Loci's own detector: YOLO26n fine-tuned on the Roboflow [
 
 **Live demo** ([tools/parcel_demo/d415_detect.py](tools/parcel_demo/d415_detect.py)): D415 + INT8 engine, headless, with distance and rough size on every box. It ran at **29.8 FPS** (limited by the camera's 30 FPS), with 9.6 ms inference.
 
+## Damaged-parcel detector (Parcel3D)
+
+YOLO26n trained on the Jetson itself (JetPack 7.2.1, PyTorch 2.14.1 + CUDA 13.0) on [Parcel3D](https://zenodo.org/records/8032204), a synthetic dataset of intact and damaged parcels (2 classes; 9,193 train / 2,000 val / 2,200 test images). 50 epochs at 640 px, batch 2, about 15.5 hours.
+
+**Test split** (2,200 held-out images, batch 1, PyTorch FP32):
+
+| Class | Precision | Recall | mAP50 | mAP50-95 |
+|---|---|---|---|---|
+| All | 0.994 | 0.996 | 0.995 | 0.980 |
+| Normal box | 0.994 | 0.995 | 0.995 | 0.986 |
+| Damaged box | 0.994 | 0.996 | 0.995 | 0.973 |
+
+- Test scores match validation (0.981), so the model isn't overfit to the validation set.
+- These are synthetic images. Accuracy on real camera images hasn't been measured yet.
+- Speed: 26.8 ms inference per image (PyTorch FP32). A TensorRT engine is next.
+
 ## Running the demo
 
 Measured on JetPack 6.2.1 inside the `ultralytics/ultralytics:latest-jetson-jetpack6` container; the JetPack 7.2.1 path isn't verified yet.
