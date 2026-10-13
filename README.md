@@ -6,7 +6,7 @@ Full design and 8-week plan: [docs/LOCI_SPEC.md](docs/LOCI_SPEC.md). Step-by-ste
 
 ## Status
 
-Week 1, **Gate 1 (platform spike)**: in progress.
+**Gate 1 (platform spike): passed** on Oct 13, 2026, with the camera on a USB 2.1 link for now. Next: Week 2, the fast C++ perception loop.
 
 | Gate 1 item | Status |
 |---|---|
