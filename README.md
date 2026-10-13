@@ -11,10 +11,10 @@ Week 1, **Gate 1 (platform spike)**: in progress.
 | Gate 1 item | Status |
 |---|---|
 | JetPack 7.2.1 (CUDA 13.2, TensorRT 10.16) | ✅ Installed from the Jetson ISO onto the microSD |
-| Camera (librealsense from source) | 🟡 D415 detected, firmware 5.17.0.10; running on USB 2.1 until a USB 3 cable is in |
+| Camera (librealsense from source) | 🟡 D415 detected, firmware 5.17.0.10, depth read from Python works; link is still USB 2.1 |
 | Detector engine (TensorRT) | ✅ FP16 engine built on TensorRT 10.16: 4.79 ms GPU time per 640 px frame |
 | VLM (Cosmos-Reason2-2B, INT4) | ⬜ Next |
-| Headless memory baseline (tegrastats) | ⬜ To do |
+| Headless memory baseline (tegrastats) | ✅ 583 MB used at idle without the desktop (1,340 MB with it); 6.9 GB available, about 3 W |
 
 ## Hardware and software
 
