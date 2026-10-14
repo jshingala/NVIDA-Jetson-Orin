@@ -35,7 +35,7 @@ constexpr int kWidth = 640;
 constexpr int kHeight = 480;
 constexpr int kFps = 30;
 constexpr int kWarmupFrames = 30;
-constexpr float kIou = 0.7f;
+constexpr float kIou = 0.5f;  // NMS; Loci's objects rarely overlap each other, duplicates of one object do
 
 using Clock = std::chrono::steady_clock;
 

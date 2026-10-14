@@ -15,10 +15,11 @@ struct Detection {
 // Per-class NMS, highest score first. A lower-scored box of the same class is
 // dropped when its IoU with a kept box is above `iou_thresh`, or when it lies
 // mostly inside / around it (intersection over the smaller box above
-// `contain_thresh`). The second rule removes part-boxes, e.g. one lens of a
-// pair of glasses inside the box of the whole pair, which plain IoU keeps
-// because their sizes differ.
-std::vector<Detection> nms(std::vector<Detection> boxes, float iou_thresh, float contain_thresh = 0.8f,
+// `contain_thresh`). The second rule removes part-boxes, e.g. the lenses of a
+// pair of glasses inside a box of glasses + face, which plain IoU keeps
+// because their sizes differ. 0.6 was picked from live D415 frames where YOLOE
+// drew two offset boxes on one pair of glasses (74% contained, IoU 0.48).
+std::vector<Detection> nms(std::vector<Detection> boxes, float iou_thresh, float contain_thresh = 0.6f,
                            size_t max_keep = 300);
 
 }  // namespace loci
