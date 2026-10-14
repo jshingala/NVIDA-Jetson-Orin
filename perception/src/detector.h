@@ -1,9 +1,11 @@
 // TensorRT detector for the YOLOE engine exported by tools/yoloe/export_yoloe.py.
 //
-// Step 3 baseline: letterbox and box decoding run on the CPU so the CUDA
-// kernels in step 4 have something correct to be measured against.
+// Preprocessing runs in a fused CUDA kernel by default (preprocess.cu); the
+// CPU version is kept as the baseline it is measured and checked against.
 
 #pragma once
+
+#include "preprocess.h"
 
 #include <cuda_runtime_api.h>
 
@@ -27,7 +29,7 @@ struct Detection {
 };
 
 struct DetectTimings {
-    double pre_ms = 0.0;    // letterbox + normalise (CPU)
+    double pre_ms = 0.0;    // letterbox + normalise (GPU kernel incl. upload, or CPU)
     double infer_ms = 0.0;  // copy in, TensorRT, copy out
     double post_ms = 0.0;   // decode + NMS (CPU)
 };
@@ -43,11 +45,17 @@ public:
     std::vector<Detection> detect(const uint8_t* bgr, int width, int height, int stride,
                                   float conf, float iou, DetectTimings* timings = nullptr);
 
+    // Largest absolute difference between the CPU and GPU preprocessed inputs for one frame.
+    float check_preprocess(const uint8_t* bgr, int width, int height, int stride);
+
+    void set_gpu_preprocess(bool on) { gpu_pre_ = on; }
+    bool gpu_preprocess() const { return gpu_pre_; }
     const std::vector<std::string>& class_names() const { return names_; }
     int input_size() const { return input_w_; }
 
 private:
-    void letterbox(const uint8_t* bgr, int width, int height, int stride);
+    void preprocess_cpu(const uint8_t* bgr, int width, int height, int stride);
+    void preprocess_gpu(const uint8_t* bgr, int width, int height, int stride);
     std::vector<Detection> decode(int width, int height, float conf, float iou) const;
 
     std::vector<std::string> names_;
@@ -64,10 +72,11 @@ private:
     std::vector<void*> device_buffers_;
     void* device_input_ = nullptr;
     void* device_pred_ = nullptr;
+    uint8_t* device_image_ = nullptr;  // raw camera frame for the GPU kernel
+    size_t device_image_bytes_ = 0;
 
-    // letterbox parameters of the last frame
-    float scale_ = 1.0f;
-    int pad_x_ = 0, pad_y_ = 0;
+    bool gpu_pre_ = true;
+    Letterbox lb_;  // geometry of the last frame
 };
 
 }  // namespace loci

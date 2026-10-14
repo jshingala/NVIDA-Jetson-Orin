@@ -5,7 +5,10 @@
 // deproject the box centre to (x, y, z) in the camera frame
 // (x right, y down, z forward). Prints a summary once a second.
 //
-//   ./loci_detect ENGINE CLASSES [seconds] [--conf 0.15]
+//   ./loci_detect ENGINE CLASSES [seconds] [--conf 0.15] [--cpu-pre] [--check]
+//
+// --cpu-pre  preprocess on the CPU instead of the CUDA kernel (baseline)
+// --check    on the first frame, compare CPU and GPU preprocessing and print the largest difference
 
 #include "detector.h"
 
@@ -62,14 +65,20 @@ float box_depth(const rs2::depth_frame& depth, float depth_scale, const loci::De
 
 int main(int argc, char** argv) try {
     if (argc < 3) {
-        std::fprintf(stderr, "usage: %s ENGINE CLASSES [seconds] [--conf 0.15]\n", argv[0]);
+        std::fprintf(stderr, "usage: %s ENGINE CLASSES [seconds] [--conf 0.15] [--cpu-pre] [--check]\n", argv[0]);
         return EXIT_FAILURE;
     }
     double run_seconds = 10.0;
     float conf = 0.15f;
+    bool cpu_pre = false;
+    bool check = false;
     for (int i = 3; i < argc; ++i) {
         if (std::strcmp(argv[i], "--conf") == 0 && i + 1 < argc) {
             conf = static_cast<float>(std::atof(argv[++i]));
+        } else if (std::strcmp(argv[i], "--cpu-pre") == 0) {
+            cpu_pre = true;
+        } else if (std::strcmp(argv[i], "--check") == 0) {
+            check = true;
         } else {
             run_seconds = std::atof(argv[i]);
         }
@@ -78,8 +87,10 @@ int main(int argc, char** argv) try {
     // Load the engine before starting the camera, so a model problem shows up on its own.
     std::printf("Loading %s\n", argv[1]);
     loci::Detector detector(argv[1], argv[2]);
+    detector.set_gpu_preprocess(!cpu_pre);
     const std::vector<std::string>& names = detector.class_names();
-    std::printf("%zu classes, input %dx%d, conf %.2f\n", names.size(), detector.input_size(), detector.input_size(), conf);
+    std::printf("%zu classes, input %dx%d, conf %.2f, preprocess on %s\n", names.size(), detector.input_size(),
+                detector.input_size(), conf, cpu_pre ? "CPU" : "GPU (CUDA kernel)");
 
     rs2::config cfg;
     cfg.enable_stream(RS2_STREAM_COLOR, kWidth, kHeight, RS2_FORMAT_BGR8, kFps);
@@ -92,6 +103,14 @@ int main(int argc, char** argv) try {
         profile.get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>().get_intrinsics();
     rs2::align align_to_color(RS2_STREAM_COLOR);
     for (int i = 0; i < kWarmupFrames; ++i) pipe.wait_for_frames();
+
+    if (check) {
+        rs2::video_frame c = align_to_color.process(pipe.wait_for_frames()).get_color_frame();
+        const float diff = detector.check_preprocess(static_cast<const uint8_t*>(c.get_data()), c.get_width(),
+                                                     c.get_height(), c.get_stride_in_bytes());
+        std::printf("Preprocess check: max |GPU - CPU| = %.3g over %d values\n", diff,
+                    3 * detector.input_size() * detector.input_size());
+    }
 
     long total_frames = 0;
     double sum_pre = 0, sum_infer = 0, sum_post = 0, sum_depth = 0, sum_loop = 0;
