@@ -30,7 +30,7 @@ add_executable(loci_capture src/capture.cpp)
 target_link_libraries(loci_capture PRIVATE realsense2::realsense2)
 target_compile_options(loci_capture PRIVATE ${LOCI_WARNINGS})
 
-add_library(loci_detector src/detector.cpp src/preprocess.cu)
+add_library(loci_detector src/detector.cpp src/preprocess.cu src/depth3d.cu)
 target_include_directories(loci_detector PUBLIC src)
 target_include_directories(loci_detector SYSTEM PUBLIC ${TENSORRT_INCLUDE_DIR})
 target_link_libraries(loci_detector PUBLIC CUDA::cudart ${NVINFER_LIBRARY})

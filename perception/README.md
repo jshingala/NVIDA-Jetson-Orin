@@ -43,3 +43,12 @@ It prints per-stage times (pre, infer, post, depth) and every detection once a s
 ```
 
 In both modes `pre` includes copying the input to the GPU, and `infer` is TensorRT plus copying the predictions back.
+
+## Step 5: CUDA kernel 2, box depth and 3D position
+
+`src/depth3d.cu` runs one thread block per detection: a shared-memory histogram of the non-zero depth values in the middle half of the box (exact median for depths under 8.191 m), then the box centre deprojected through the colour intrinsics, mirroring `rs2_deproject_pixel_to_point`. It is opt-in with `--gpu-depth`; the CPU path stays the default until the numbers say otherwise. With `--check`, every GPU position is compared against librealsense's own function.
+
+```bash
+./perception/build/loci_detect ~/yolo/yoloe/yoloe-26s-seg.engine ~/yolo/yoloe/classes.txt 15 --gpu-depth --check
+./perception/build/loci_detect ~/yolo/yoloe/yoloe-26s-seg.engine ~/yolo/yoloe/classes.txt 15
+```
