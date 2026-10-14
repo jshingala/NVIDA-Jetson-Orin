@@ -11,6 +11,7 @@
 #include <iterator>
 #include <numeric>
 #include <stdexcept>
+#include <utility>
 
 namespace loci {
 namespace {
@@ -50,13 +51,6 @@ size_t plan_offset(const std::vector<char>& file) {
     return 0;
 }
 
-float iou(const Detection& a, const Detection& b) {
-    const float ix = std::max(0.0f, std::min(a.x2, b.x2) - std::max(a.x1, b.x1));
-    const float iy = std::max(0.0f, std::min(a.y2, b.y2) - std::max(a.y1, b.y1));
-    const float inter = ix * iy;
-    const float uni = (a.x2 - a.x1) * (a.y2 - a.y1) + (b.x2 - b.x1) * (b.y2 - b.y1) - inter;
-    return uni > 0.0f ? inter / uni : 0.0f;
-}
 
 }  // namespace
 
@@ -189,21 +183,7 @@ std::vector<Detection> Detector::decode(int width, int height, float conf, float
                               to_image_x(cx + w / 2), to_image_y(cy + h / 2), best_score, best});
     }
 
-    // Per-class NMS, highest score first.
-    std::sort(candidates.begin(), candidates.end(),
-              [](const Detection& a, const Detection& b) { return a.score > b.score; });
-    std::vector<Detection> kept;
-    std::vector<bool> removed(candidates.size(), false);
-    for (size_t i = 0; i < candidates.size() && kept.size() < 300; ++i) {
-        if (removed[i]) continue;
-        kept.push_back(candidates[i]);
-        for (size_t j = i + 1; j < candidates.size(); ++j) {
-            if (!removed[j] && candidates[j].cls == candidates[i].cls && iou(candidates[i], candidates[j]) > iou_thresh) {
-                removed[j] = true;
-            }
-        }
-    }
-    return kept;
+    return nms(std::move(candidates), iou_thresh);
 }
 
 std::vector<Detection> Detector::detect(const uint8_t* bgr, int width, int height, int stride,

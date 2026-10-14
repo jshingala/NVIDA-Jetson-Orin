@@ -23,7 +23,12 @@ using loci::TrackerInput;
 using loci::TrackOutput;
 
 TrackerInput det(float x, float y, float score = 0.8f, int cls = 0, float w = 40, float h = 30) {
-    return {{x, y, x + w, y + h}, score, cls};
+    return {{x, y, x + w, y + h}, score, cls, {}};
+}
+
+// Detection with a 3D position (metres).
+TrackerInput det3(float x, float y, float w, float h, float px, float pz, float score = 0.8f, int cls = 0) {
+    return {{x, y, x + w, y + h}, score, cls, {px, 0.1f, pz}};
 }
 
 const TrackOutput* find_cls(const std::vector<TrackOutput>& out, int cls) {
@@ -111,6 +116,42 @@ void two_same_class_objects_stay_apart() {
     CHECK(ids.size() == 2);
 }
 
+// The detector redraws one pair of glasses as either the whole pair or one lens:
+// the boxes barely overlap in 2D, but the 3D position is the same.
+void box_shape_jump_keeps_id_in_3d() {
+    Tracker tr;
+    std::set<int> ids;
+    for (int f = 0; f < 60; ++f) {
+        const TrackerInput d = (f % 4 < 2) ? det3(100, 100, 160, 60, 0.10f, 0.80f) : det3(110, 105, 50, 50, 0.11f, 0.80f);
+        for (const TrackOutput& t : tr.update({d})) ids.insert(t.id);
+    }
+    CHECK(ids.size() == 1);
+    CHECK(tr.tracks_started() == 1);
+}
+
+// Whole-pair box and a lens box in the same frame: one object, one track.
+void duplicate_box_does_not_start_second_track() {
+    Tracker tr;
+    for (int f = 0; f < 30; ++f) {
+        tr.update({det3(100, 100, 160, 60, 0.10f, 0.80f), det3(230, 100, 30, 30, 0.13f, 0.80f, 0.5f)});
+    }
+    CHECK(tr.tracks_started() == 1);
+}
+
+// Two real objects of one class, far apart in 3D, keep separate IDs even with noisy boxes.
+void far_apart_in_3d_stay_separate() {
+    Tracker tr;
+    std::set<int> ids;
+    for (int f = 0; f < 40; ++f) {
+        const float jitter = (f % 2) ? 25.0f : 0.0f;  // boxes jump, so IoU alone would fail
+        for (const TrackOutput& t : tr.update({det3(100 + jitter, 100, 40, 30, 0.0f, 0.8f),
+                                               det3(400 - jitter, 100, 40, 30, 0.5f, 0.8f)})) {
+            ids.insert(t.id);
+        }
+    }
+    CHECK(ids.size() == 2);
+}
+
 }  // namespace
 
 int main() {
@@ -124,6 +165,9 @@ int main() {
         {"classes_do_not_swap", classes_do_not_swap},
         {"low_score_keeps_track_but_cannot_start_one", low_score_keeps_track_but_cannot_start_one},
         {"two_same_class_objects_stay_apart", two_same_class_objects_stay_apart},
+        {"box_shape_jump_keeps_id_in_3d", box_shape_jump_keeps_id_in_3d},
+        {"duplicate_box_does_not_start_second_track", duplicate_box_does_not_start_second_track},
+        {"far_apart_in_3d_stay_separate", far_apart_in_3d_stay_separate},
     };
     for (const Test& t : tests) {
         const int before = g_failures;

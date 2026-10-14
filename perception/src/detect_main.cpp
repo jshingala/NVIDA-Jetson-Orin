@@ -26,7 +26,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
-#include <map>
 #include <string>
 #include <vector>
 
@@ -107,7 +106,6 @@ int main(int argc, char** argv) try {
                 gpu_depth ? "GPU (CUDA kernel)" : "CPU");
     loci::BoxLocator locator;
     loci::Tracker tracker;
-    std::map<int, loci::Point3> last_xyz;  // latest 3D position per track ID, kept while a track is lost
 
     rs2::config cfg;
     cfg.enable_stream(RS2_STREAM_COLOR, kWidth, kHeight, RS2_FORMAT_BGR8, kFps);
@@ -179,11 +177,11 @@ int main(int argc, char** argv) try {
 
         const Clock::time_point track_start = Clock::now();
         std::vector<loci::TrackerInput> inputs;
-        for (const loci::Detection& d : dets) inputs.push_back({{d.x1, d.y1, d.x2, d.y2}, d.score, d.cls});
-        const std::vector<loci::TrackOutput> tracks = tracker.update(inputs);
-        for (const loci::TrackOutput& tr : tracks) {
-            if (tr.detection >= 0 && points[tr.detection].z > 0.0f) last_xyz[tr.id] = points[tr.detection];
+        for (size_t i = 0; i < dets.size(); ++i) {
+            const loci::Detection& d = dets[i];
+            inputs.push_back({{d.x1, d.y1, d.x2, d.y2}, d.score, d.cls, {points[i].x, points[i].y, points[i].z}});
         }
+        const std::vector<loci::TrackOutput> tracks = tracker.update(inputs);
         sum_track += ms_between(track_start, Clock::now());
 
         sum_pre += t.pre_ms;
@@ -200,15 +198,14 @@ int main(int argc, char** argv) try {
                         window_frames * 1000.0 / window_ms, t.pre_ms, t.infer_ms, t.post_ms, depth_ms, dets.size(),
                         tracks.size());
             for (const loci::TrackOutput& tr : tracks) {
-                const auto it = last_xyz.find(tr.id);
                 std::printf("    #%-3d %-15s", tr.id, names[tr.cls].c_str());
                 if (tr.lost_frames > 0) {
                     std::printf(" lost %2d frames", tr.lost_frames);
                 } else {
                     std::printf(" %.2f          ", tr.score);
                 }
-                if (it != last_xyz.end()) {
-                    std::printf("  x %+.2f  y %+.2f  z %.2f m\n", it->second.x, it->second.y, it->second.z);
+                if (tr.pos.z > 0.0f) {
+                    std::printf("  x %+.2f  y %+.2f  z %.2f m\n", tr.pos.x, tr.pos.y, tr.pos.z);
                 } else {
                     std::printf("  (no depth yet)\n");
                 }
