@@ -21,3 +21,14 @@ To keep colour frames (24-bit BMP, one per second by default), e.g. for detector
 ```
 
 If the camera stops sending frames ("Frame didn't arrive"), reset it: `python3 -c "import pyrealsense2 as rs; rs.context().query_devices()[0].hardware_reset()"`.
+
+## Step 3: live detections with 3D positions
+
+`loci_detect` loads the YOLOE TensorRT engine (from `tools/yoloe/export_yoloe.py`), runs it on every frame and gives each object a position in meters: the median depth of the middle half of its box, deprojected through the colour intrinsics (x right, y down, z forward from the camera). Letterbox and decoding run on the CPU for now; step 4 moves them into CUDA kernels.
+
+```bash
+cmake -S perception -B perception/build && cmake --build perception/build -j4
+./perception/build/loci_detect ~/yolo/yoloe/yoloe-26s-seg.engine ~/yolo/yoloe/classes.txt 15 --conf 0.15
+```
+
+It prints per-stage times (pre, infer, post, depth) and every detection once a second, then the means over the run.
