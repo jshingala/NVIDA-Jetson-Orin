@@ -110,32 +110,58 @@ Detector::Detector(const std::string& engine_path, const std::string& classes_pa
 
 Detector::~Detector() {
     for (void* buffer : device_buffers_) cudaFree(buffer);
+    if (device_image_) cudaFree(device_image_);
     if (stream_) cudaStreamDestroy(stream_);
 }
 
-// Ultralytics-style letterbox: keep aspect ratio, centre, pad with grey 114,
-// BGR -> RGB, scale to [0, 1], HWC -> CHW. Nearest-neighbour resize here; the
-// camera already gives 640 wide, so for 640x480 there is no resize at all.
-void Detector::letterbox(const uint8_t* bgr, int width, int height, int stride) {
-    scale_ = std::min(static_cast<float>(input_w_) / width, static_cast<float>(input_h_) / height);
-    const int new_w = static_cast<int>(std::round(width * scale_));
-    const int new_h = static_cast<int>(std::round(height * scale_));
-    pad_x_ = (input_w_ - new_w) / 2;
-    pad_y_ = (input_h_ - new_h) / 2;
-
+// CPU baseline: same output as the kernel, but nearest-neighbour when resizing
+// (the camera gives 640x480, so at 640 input there is no resize and the two match exactly).
+void Detector::preprocess_cpu(const uint8_t* bgr, int width, int height, int stride) {
+    lb_ = make_letterbox(width, height, input_w_, input_h_);
     const size_t plane = static_cast<size_t>(input_w_) * input_h_;
     std::fill(host_input_.begin(), host_input_.end(), 114.0f / 255.0f);
-    for (int y = 0; y < new_h; ++y) {
-        const int sy = std::min(height - 1, static_cast<int>(y / scale_));
+    for (int y = 0; y < lb_.new_h; ++y) {
+        const int sy = std::min(height - 1, static_cast<int>(y / lb_.scale));
         const uint8_t* row = bgr + static_cast<size_t>(sy) * stride;
-        const size_t out = static_cast<size_t>(y + pad_y_) * input_w_ + pad_x_;
-        for (int x = 0; x < new_w; ++x) {
-            const uint8_t* px = row + 3 * std::min(width - 1, static_cast<int>(x / scale_));
+        const size_t out = static_cast<size_t>(y + lb_.pad_y) * input_w_ + lb_.pad_x;
+        for (int x = 0; x < lb_.new_w; ++x) {
+            const uint8_t* px = row + 3 * std::min(width - 1, static_cast<int>(x / lb_.scale));
             host_input_[out + x] = px[2] / 255.0f;              // R
             host_input_[plane + out + x] = px[1] / 255.0f;      // G
             host_input_[2 * plane + out + x] = px[0] / 255.0f;  // B
         }
     }
+    check_cuda(cudaMemcpyAsync(device_input_, host_input_.data(), host_input_.size() * sizeof(float),
+                               cudaMemcpyHostToDevice, stream_), "copy input");
+}
+
+// Upload the raw 8-bit frame (0.9 MB at 640x480 instead of 4.9 MB of floats)
+// and let the kernel write the TensorRT input directly.
+void Detector::preprocess_gpu(const uint8_t* bgr, int width, int height, int stride) {
+    lb_ = make_letterbox(width, height, input_w_, input_h_);
+    const size_t bytes = static_cast<size_t>(stride) * height;
+    if (bytes > device_image_bytes_) {
+        if (device_image_) cudaFree(device_image_);
+        check_cuda(cudaMalloc(reinterpret_cast<void**>(&device_image_), bytes), "cudaMalloc image");
+        device_image_bytes_ = bytes;
+    }
+    check_cuda(cudaMemcpyAsync(device_image_, bgr, bytes, cudaMemcpyHostToDevice, stream_), "copy image");
+    launch_preprocess(device_image_, width, height, stride, static_cast<float*>(device_input_),
+                      input_w_, input_h_, lb_, stream_);
+    check_cuda(cudaGetLastError(), "preprocess kernel");
+}
+
+float Detector::check_preprocess(const uint8_t* bgr, int width, int height, int stride) {
+    preprocess_gpu(bgr, width, height, stride);
+    std::vector<float> gpu(host_input_.size());
+    check_cuda(cudaMemcpyAsync(gpu.data(), device_input_, gpu.size() * sizeof(float),
+                               cudaMemcpyDeviceToHost, stream_), "copy back");
+    check_cuda(cudaStreamSynchronize(stream_), "cudaStreamSynchronize");
+    preprocess_cpu(bgr, width, height, stride);
+    check_cuda(cudaStreamSynchronize(stream_), "cudaStreamSynchronize");
+    float worst = 0.0f;
+    for (size_t i = 0; i < gpu.size(); ++i) worst = std::max(worst, std::fabs(gpu[i] - host_input_[i]));
+    return worst;
 }
 
 std::vector<Detection> Detector::decode(int width, int height, float conf, float iou_thresh) const {
@@ -157,8 +183,8 @@ std::vector<Detection> Detector::decode(int width, int height, float conf, float
         if (best_score < conf) continue;
 
         const float cx = p[a], cy = p[n + a], w = p[2 * n + a], h = p[3 * n + a];
-        auto to_image_x = [&](float v) { return std::clamp((v - pad_x_) / scale_, 0.0f, width - 1.0f); };
-        auto to_image_y = [&](float v) { return std::clamp((v - pad_y_) / scale_, 0.0f, height - 1.0f); };
+        auto to_image_x = [&](float v) { return std::clamp((v - lb_.pad_x) / lb_.scale, 0.0f, width - 1.0f); };
+        auto to_image_y = [&](float v) { return std::clamp((v - lb_.pad_y) / lb_.scale, 0.0f, height - 1.0f); };
         candidates.push_back({to_image_x(cx - w / 2), to_image_y(cy - h / 2),
                               to_image_x(cx + w / 2), to_image_y(cy + h / 2), best_score, best});
     }
@@ -183,12 +209,15 @@ std::vector<Detection> Detector::decode(int width, int height, float conf, float
 std::vector<Detection> Detector::detect(const uint8_t* bgr, int width, int height, int stride,
                                         float conf, float iou_thresh, DetectTimings* timings) {
     Clock::time_point t = Clock::now();
-    letterbox(bgr, width, height, stride);
+    if (gpu_pre_) {
+        preprocess_gpu(bgr, width, height, stride);
+    } else {
+        preprocess_cpu(bgr, width, height, stride);
+    }
+    check_cuda(cudaStreamSynchronize(stream_), "cudaStreamSynchronize");  // so pre and infer are timed apart
     const double pre_ms = ms_since(t);
 
     t = Clock::now();
-    check_cuda(cudaMemcpyAsync(device_input_, host_input_.data(), host_input_.size() * sizeof(float),
-                               cudaMemcpyHostToDevice, stream_), "copy input");
     if (!context_->enqueueV3(stream_)) throw std::runtime_error("TensorRT enqueueV3 failed");
     check_cuda(cudaMemcpyAsync(host_pred_.data(), device_pred_, host_pred_.size() * sizeof(float),
                                cudaMemcpyDeviceToHost, stream_), "copy output");

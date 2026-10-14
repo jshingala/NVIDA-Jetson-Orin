@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.22)
-project(loci_perception LANGUAGES CXX)
 
+# JetPack keeps nvcc out of PATH; point CMake at it. Orin is compute capability 8.7.
+if(NOT DEFINED CMAKE_CUDA_COMPILER AND EXISTS /usr/local/cuda/bin/nvcc)
+  set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
+endif()
+set(CMAKE_CUDA_ARCHITECTURES 87)
+project(loci_perception LANGUAGES CXX CUDA)
+
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -22,11 +30,11 @@ add_executable(loci_capture src/capture.cpp)
 target_link_libraries(loci_capture PRIVATE realsense2::realsense2)
 target_compile_options(loci_capture PRIVATE ${LOCI_WARNINGS})
 
-add_library(loci_detector src/detector.cpp)
+add_library(loci_detector src/detector.cpp src/preprocess.cu)
 target_include_directories(loci_detector PUBLIC src)
 target_include_directories(loci_detector SYSTEM PUBLIC ${TENSORRT_INCLUDE_DIR})
 target_link_libraries(loci_detector PUBLIC CUDA::cudart ${NVINFER_LIBRARY})
-target_compile_options(loci_detector PRIVATE ${LOCI_WARNINGS})
+target_compile_options(loci_detector PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${LOCI_WARNINGS}>)
 
 add_executable(loci_detect src/detect_main.cpp)
 target_link_libraries(loci_detect PRIVATE loci_detector realsense2::realsense2)
