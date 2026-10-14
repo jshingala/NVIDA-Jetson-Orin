@@ -30,6 +30,13 @@ void part_box_inside_whole_removed() {
     CHECK(out.size() == 1 && out[0].score == 0.8f);
 }
 
+// Measured from a live frame: two offset "glasses" boxes on one worn pair.
+// 74% of the smaller box is covered and IoU is 0.48, so IoU 0.7 alone kept both.
+void offset_duplicate_from_live_frame_removed() {
+    const auto out = nms({{320, 215, 447, 307, 0.60f, 3}, {285, 253, 445, 310, 0.60f, 3}}, 0.5f);
+    CHECK(out.size() == 1);
+}
+
 void separate_objects_kept() {
     const auto out = nms({{100, 100, 200, 160, 0.9f, 0}, {300, 100, 400, 160, 0.8f, 0}}, 0.7f);
     CHECK(out.size() == 2);
@@ -52,6 +59,7 @@ int main() {
     const Test tests[] = {
         {"overlapping_duplicate_removed", overlapping_duplicate_removed},
         {"part_box_inside_whole_removed", part_box_inside_whole_removed},
+        {"offset_duplicate_from_live_frame_removed", offset_duplicate_from_live_frame_removed},
         {"separate_objects_kept", separate_objects_kept},
         {"different_classes_kept", different_classes_kept},
         {"sorted_by_score", sorted_by_score},
