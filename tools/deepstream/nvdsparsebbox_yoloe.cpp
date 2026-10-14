@@ -3,11 +3,13 @@
 // output0 is [4 + classes + 32 mask coefs, 8400] after nvinfer drops the batch
 // dimension: rows cx, cy, w, h (network-input pixels), then one sigmoid score
 // per class. Mask outputs are ignored. NMS is left to nvinfer (cluster-mode=2).
+// LOCI_DS_DEBUG=1 prints the output layers and the best score once a second.
 
 #include "nvdsinfer_custom_impl.h"
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
@@ -15,6 +17,18 @@ extern "C" bool NvDsInferParseYoloE(std::vector<NvDsInferLayerInfo> const& outpu
                                     NvDsInferNetworkInfo const& networkInfo,
                                     NvDsInferParseDetectionParams const& detectionParams,
                                     std::vector<NvDsInferObjectDetectionInfo>& objectList) {
+    static const bool debug = std::getenv("LOCI_DS_DEBUG") != nullptr;
+    static long calls = 0;
+    const bool report = debug && calls++ % 30 == 0;
+    if (report) {
+        std::fprintf(stderr, "YoloE parser: call %ld, net %ux%u, %zu output layers\n", calls, networkInfo.width,
+                     networkInfo.height, outputLayersInfo.size());
+        for (const NvDsInferLayerInfo& l : outputLayersInfo) {
+            std::fprintf(stderr, "  %s type %d dims", l.layerName ? l.layerName : "?", static_cast<int>(l.dataType));
+            for (unsigned i = 0; i < l.inferDims.numDims; ++i) std::fprintf(stderr, " %u", l.inferDims.d[i]);
+            std::fprintf(stderr, "\n");
+        }
+    }
     const NvDsInferLayerInfo* pred = nullptr;
     for (const NvDsInferLayerInfo& layer : outputLayersInfo) {
         if (layer.inferDims.numDims != 2) continue;
@@ -42,6 +56,8 @@ extern "C" bool NvDsInferParseYoloE(std::vector<NvDsInferLayerInfo> const& outpu
     const float net_h = static_cast<float>(networkInfo.height);
     const std::vector<float>& thresholds = detectionParams.perClassPreclusterThreshold;
 
+    float top_score = 0.0f;
+    int top_anchor = 0;
     for (int a = 0; a < n; ++a) {
         int best = 0;
         float best_score = p[4 * n + a];
@@ -51,6 +67,10 @@ extern "C" bool NvDsInferParseYoloE(std::vector<NvDsInferLayerInfo> const& outpu
                 best_score = s;
                 best = c;
             }
+        }
+        if (best_score > top_score) {
+            top_score = best_score;
+            top_anchor = a;
         }
         const float thresh = best < static_cast<int>(thresholds.size()) ? thresholds[best] : 0.25f;
         if (best_score < thresh) continue;
@@ -70,6 +90,11 @@ extern "C" bool NvDsInferParseYoloE(std::vector<NvDsInferLayerInfo> const& outpu
         obj.height = y2 - y1;
         obj.detectionConfidence = best_score;
         objectList.push_back(obj);
+    }
+    if (report) {
+        const int a = top_anchor;
+        std::fprintf(stderr, "  best score %.3f at anchor %d (box %.0f %.0f %.0f %.0f), %zu objects >= threshold\n",
+                     top_score, a, p[a], p[n + a], p[2 * n + a], p[3 * n + a], objectList.size());
     }
     return true;
 }
