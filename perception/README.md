@@ -13,3 +13,11 @@ cmake -S perception -B perception/build
 cmake --build perception/build -j4
 ./perception/build/loci_capture 10
 ```
+
+To keep colour frames (24-bit BMP, one per second by default), e.g. for detector checks or INT8 calibration:
+
+```bash
+./perception/build/loci_capture 20 --save ~/frames --every 30
+```
+
+If the camera stops sending frames ("Frame didn't arrive"), reset it: `python3 -c "import pyrealsense2 as rs; rs.context().query_devices()[0].hardware_reset()"`.
