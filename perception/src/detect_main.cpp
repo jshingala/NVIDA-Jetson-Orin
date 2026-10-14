@@ -14,6 +14,7 @@
 
 #include "depth3d.h"
 #include "detector.h"
+#include "tracker.h"
 
 #include <librealsense2/rs.hpp>
 #include <librealsense2/rsutil.h>
@@ -25,6 +26,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -104,6 +106,8 @@ int main(int argc, char** argv) try {
                 detector.input_size(), detector.input_size(), conf, cpu_pre ? "CPU" : "GPU (CUDA kernel)",
                 gpu_depth ? "GPU (CUDA kernel)" : "CPU");
     loci::BoxLocator locator;
+    loci::Tracker tracker;
+    std::map<int, loci::Point3> last_xyz;  // latest 3D position per track ID, kept while a track is lost
 
     rs2::config cfg;
     cfg.enable_stream(RS2_STREAM_COLOR, kWidth, kHeight, RS2_FORMAT_BGR8, kFps);
@@ -129,6 +133,7 @@ int main(int argc, char** argv) try {
 
     long total_frames = 0;
     double sum_pre = 0, sum_infer = 0, sum_post = 0, sum_depth = 0, sum_loop = 0;
+    double sum_track = 0;
     double sum_depth_busy = 0;  // depth time over frames that had at least one detection
     long busy_frames = 0, checked_boxes = 0;
     float worst_xyz_diff = 0.0f;
@@ -172,6 +177,15 @@ int main(int argc, char** argv) try {
             }
         }
 
+        const Clock::time_point track_start = Clock::now();
+        std::vector<loci::TrackerInput> inputs;
+        for (const loci::Detection& d : dets) inputs.push_back({{d.x1, d.y1, d.x2, d.y2}, d.score, d.cls});
+        const std::vector<loci::TrackOutput> tracks = tracker.update(inputs);
+        for (const loci::TrackOutput& tr : tracks) {
+            if (tr.detection >= 0 && points[tr.detection].z > 0.0f) last_xyz[tr.id] = points[tr.detection];
+        }
+        sum_track += ms_between(track_start, Clock::now());
+
         sum_pre += t.pre_ms;
         sum_infer += t.infer_ms;
         sum_post += t.post_ms;
@@ -182,15 +196,21 @@ int main(int argc, char** argv) try {
 
         const double window_ms = ms_between(window_start, Clock::now());
         if (window_ms >= 1000.0) {
-            std::printf("%5.1f FPS | pre %.1f  infer %.1f  post %.1f  depth %.2f ms | %zu objects\n",
-                        window_frames * 1000.0 / window_ms, t.pre_ms, t.infer_ms, t.post_ms, depth_ms, dets.size());
-            for (size_t i = 0; i < dets.size(); ++i) {
-                const loci::Point3& p = points[i];
-                if (p.z > 0.0f) {
-                    std::printf("    %-15s %.2f  x %+.2f  y %+.2f  z %.2f m\n", names[dets[i].cls].c_str(),
-                                dets[i].score, p.x, p.y, p.z);
+            std::printf("%5.1f FPS | pre %.1f  infer %.1f  post %.1f  depth %.2f ms | %zu detections, %zu tracks\n",
+                        window_frames * 1000.0 / window_ms, t.pre_ms, t.infer_ms, t.post_ms, depth_ms, dets.size(),
+                        tracks.size());
+            for (const loci::TrackOutput& tr : tracks) {
+                const auto it = last_xyz.find(tr.id);
+                std::printf("    #%-3d %-15s", tr.id, names[tr.cls].c_str());
+                if (tr.lost_frames > 0) {
+                    std::printf(" lost %2d frames", tr.lost_frames);
                 } else {
-                    std::printf("    %-15s %.2f  (no depth)\n", names[dets[i].cls].c_str(), dets[i].score);
+                    std::printf(" %.2f          ", tr.score);
+                }
+                if (it != last_xyz.end()) {
+                    std::printf("  x %+.2f  y %+.2f  z %.2f m\n", it->second.x, it->second.y, it->second.z);
+                } else {
+                    std::printf("  (no depth yet)\n");
                 }
             }
             window_frames = 0;
@@ -205,6 +225,7 @@ int main(int argc, char** argv) try {
         std::printf("\nDone: %ld frames in %.1f s (%.1f FPS)\n", total_frames, elapsed_s, n / elapsed_s);
         std::printf("Mean per frame: pre %.2f  infer %.2f  post %.2f  depth %.2f ms, total %.2f ms\n",
                     sum_pre / n, sum_infer / n, sum_post / n, sum_depth / n, sum_loop / n);
+        std::printf("Tracker: %d track IDs started, %.3f ms per frame\n", tracker.tracks_started(), sum_track / n);
         if (busy_frames > 0) {
             std::printf("Box depth on %s: %.3f ms per frame with detections (%ld frames)\n",
                         gpu_depth ? "GPU" : "CPU", sum_depth_busy / busy_frames, busy_frames);

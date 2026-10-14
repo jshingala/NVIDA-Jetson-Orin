@@ -52,3 +52,13 @@ In both modes `pre` includes copying the input to the GPU, and `infer` is Tensor
 ./perception/build/loci_detect ~/yolo/yoloe/yoloe-26s-seg.engine ~/yolo/yoloe/classes.txt 15 --gpu-depth --check
 ./perception/build/loci_detect ~/yolo/yoloe/yoloe-26s-seg.engine ~/yolo/yoloe/classes.txt 15
 ```
+
+## Step 6: tracker (stable IDs)
+
+`src/tracker.cpp` is a ByteTrack-style tracker in plain C++: class-aware greedy IoU matching against a constant-velocity prediction, confident detections first (score >= 0.35 can start a track), then low-confidence ones only to keep existing tracks alive. A new track is reported after 3 consecutive hits and survives 30 missed frames (1 s). `loci_detect` now prints tracks (`#id label score position`, or `lost N frames` with the last known position) and how many track IDs it handed out.
+
+Unit tests (no camera or GPU needed):
+
+```bash
+cmake --build perception/build -j4 && ctest --test-dir perception/build --output-on-failure
+```
