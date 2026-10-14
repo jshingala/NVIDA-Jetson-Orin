@@ -30,12 +30,28 @@ add_executable(loci_capture src/capture.cpp)
 target_link_libraries(loci_capture PRIVATE realsense2::realsense2)
 target_compile_options(loci_capture PRIVATE ${LOCI_WARNINGS})
 
+# Plain C++ parts (duplicate removal, tracker): no camera or GPU, unit-tested on their own.
+add_library(loci_core src/nms.cpp src/tracker.cpp)
+target_include_directories(loci_core PUBLIC src)
+target_compile_options(loci_core PRIVATE ${LOCI_WARNINGS})
+
 add_library(loci_detector src/detector.cpp src/preprocess.cu src/depth3d.cu)
 target_include_directories(loci_detector PUBLIC src)
 target_include_directories(loci_detector SYSTEM PUBLIC ${TENSORRT_INCLUDE_DIR})
-target_link_libraries(loci_detector PUBLIC CUDA::cudart ${NVINFER_LIBRARY})
+target_link_libraries(loci_detector PUBLIC loci_core CUDA::cudart ${NVINFER_LIBRARY})
 target_compile_options(loci_detector PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${LOCI_WARNINGS}>)
 
 add_executable(loci_detect src/detect_main.cpp)
 target_link_libraries(loci_detect PRIVATE loci_detector realsense2::realsense2)
 target_compile_options(loci_detect PRIVATE ${LOCI_WARNINGS})
+
+enable_testing()
+add_executable(tracker_test tests/tracker_test.cpp)
+target_link_libraries(tracker_test PRIVATE loci_core)
+target_compile_options(tracker_test PRIVATE ${LOCI_WARNINGS})
+add_test(NAME tracker_test COMMAND tracker_test)
+
+add_executable(nms_test tests/nms_test.cpp)
+target_link_libraries(nms_test PRIVATE loci_core)
+target_compile_options(nms_test PRIVATE ${LOCI_WARNINGS})
+add_test(NAME nms_test COMMAND nms_test)

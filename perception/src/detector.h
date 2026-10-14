@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "nms.h"
 #include "preprocess.h"
 
 #include <cuda_runtime_api.h>
@@ -21,12 +22,6 @@ class IExecutionContext;
 }  // namespace nvinfer1
 
 namespace loci {
-
-struct Detection {
-    float x1, y1, x2, y2;  // pixels in the original image
-    float score;
-    int cls;
-};
 
 struct DetectTimings {
     double pre_ms = 0.0;    // letterbox + normalise (GPU kernel incl. upload, or CPU)
