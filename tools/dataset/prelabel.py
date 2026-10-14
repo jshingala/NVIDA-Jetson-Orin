@@ -10,7 +10,7 @@ Roboflow imports with the boxes already drawn:
 The drafts WILL contain mistakes (zero-shot YOLOE mixed up headphones and
 glasses in this room), so review every image in Roboflow before training.
 
-    cd ~/yolo/yoloe && python3 ~/loci/tools/dataset/prelabel.py --images ~/dataset_jpg --out ~/dataset_prelabeled
+    cd ~/yolo/yoloe && python3 ~/loci/tools/dataset/prelabel.py --images ~/loci_work/data/dataset_jpg --out ~/loci_work/data/dataset_prelabeled
 """
 
 import argparse
@@ -18,9 +18,12 @@ import shutil
 from collections import Counter
 from pathlib import Path
 
+# Dataset v2 (Oct 15, 2026): small items Loci finds, larger items, then landmarks.
+# Mattress and comforter are labelled as "bed" (they sit inside its box).
 CLASSES = [
-    "keys", "wallet", "phone", "glasses", "mug",
-    "remote control", "backpack", "laptop", "water bottle", "headphones",
+    "keys", "wallet", "phone", "glasses", "mug", "headphones", "calculator",
+    "wireless charger", "extension board", "pillow", "mouse pad",
+    "bed", "night stand", "desk",
 ]
 
 
@@ -60,11 +63,11 @@ def yolo_lines(boxes, width, height):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--images", default=str(Path.home() / "dataset_jpg"))
-    p.add_argument("--out", default=str(Path.home() / "dataset_prelabeled"))
+    p.add_argument("--images", default=str(Path.home() / "loci_work/data/dataset_jpg"))
+    p.add_argument("--out", default=str(Path.home() / "loci_work/data/dataset_prelabeled"))
     p.add_argument("--weights", default="yoloe-26l-seg.pt")
     p.add_argument("--conf", type=float, default=0.25)
-    p.add_argument("--classes", help="comma-separated names to keep (default: all 10)")
+    p.add_argument("--classes", help="comma-separated names to keep (default: all of CLASSES)")
     p.add_argument("--preview", type=int, default=12, help="also save this many annotated previews")
     args = p.parse_args()
 
