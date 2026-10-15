@@ -57,7 +57,7 @@ In both modes `pre` includes copying the input to the GPU, and `infer` is Tensor
 
 `src/tracker.cpp` is a ByteTrack-style tracker in plain C++: class-aware greedy matching, confident detections first (score >= 0.35 can start a track), then low-confidence ones only to keep existing tracks alive. Each pass matches on IoU against a constant-velocity prediction first, then on 3D distance (within 10 cm), so an object keeps its ID when the detector redraws it with a very different box. A confident detection within 10 cm of an existing track of its class never starts a second track. A new track is reported after 3 consecutive hits and survives 30 missed frames (1 s). `loci_detect` prints tracks (`#id label score position`, or `lost N frames` with the last known position) and how many track IDs it handed out.
 
-Duplicate removal (`src/nms.cpp`) drops a box that overlaps a better one of its class (IoU > 0.7) or lies mostly inside or around it (intersection over the smaller box > 0.8), e.g. one lens inside the box of the whole pair of glasses.
+Duplicate removal (`src/nms.cpp`) drops a box that overlaps a better one of its class (IoU > 0.5) or lies mostly inside or around it (intersection over the smaller box > 0.6; both picked from measured duplicate boxes on live D415 frames), e.g. one lens inside the box of the whole pair of glasses.
 
 Unit tests (no camera or GPU needed):
 

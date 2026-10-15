@@ -96,7 +96,11 @@ BoxLocator::~BoxLocator() {
 
 std::vector<Point3> BoxLocator::locate(const uint16_t* depth, int width, int height, float depth_scale,
                                        const CameraIntrinsics& intr, const std::vector<BoxRegion>& regions) {
-    const int n = std::min(static_cast<int>(regions.size()), max_boxes_);
+    if (static_cast<int>(regions.size()) > max_boxes_) {
+        throw std::runtime_error("BoxLocator: " + std::to_string(regions.size()) + " boxes, capacity is " +
+                                 std::to_string(max_boxes_));
+    }
+    const int n = static_cast<int>(regions.size());
     std::vector<Point3> points(n);
     if (n == 0) return points;
 
