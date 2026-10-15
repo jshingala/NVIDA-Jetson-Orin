@@ -51,7 +51,8 @@ public:
     BoxLocator(const BoxLocator&) = delete;
     BoxLocator& operator=(const BoxLocator&) = delete;
 
-    // depth: host Z16 image (width x height, tightly packed). One point per region.
+    // depth: host Z16 image (width x height, tightly packed). One point per region;
+    // throws if there are more regions than `max_boxes` rather than dropping boxes.
     std::vector<Point3> locate(const uint16_t* depth, int width, int height, float depth_scale,
                                const CameraIntrinsics& intr, const std::vector<BoxRegion>& regions);
 
