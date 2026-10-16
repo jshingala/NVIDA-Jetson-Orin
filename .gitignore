@@ -38,3 +38,6 @@ data/
 ._*
 .vscode/
 .idea/
+
+# Generated knowledge graph (graphify); derived output, not source
+graphify-out/
